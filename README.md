@@ -1,4 +1,4 @@
-# store-api : 20 July 2018
+# store-api : 20 July, 2018
 
 **REQUIREMENT**
 
