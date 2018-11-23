@@ -19,6 +19,8 @@ There are just a few rules:
 ## Techinical overview:
  - The application is spring-boot microservice, 2.0.3.RELEASE version. 
  - Java 8 is used for development
+ - Technologies: Spring, Maven, Javascript
+
  
 **Frontend** is placed in **src/main/resources/public/index.html file**, represent a front end of the application, so the entire application implementation can be checked visualy using this html, once you run java app. Open this file in browser (hopefully not some ancient version which does not support es6, since es6 syntax is used).
 
