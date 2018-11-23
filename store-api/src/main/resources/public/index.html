@@ -1,0 +1,308 @@
+<!doctype html>
+<html>
+<head>
+<link rel="stylesheet"
+	href="http://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+	integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
+	crossorigin="anonymous">
+
+<style type="text/css">
+#map {
+	height: 400px;
+	background-color: grey;
+	border: 1px solid black;
+}
+
+#city-list {
+	list-style: none;
+}
+
+.hand {
+	cursor: pointer;
+}
+
+input {
+	width: 100px;
+}
+</style>
+</head>
+<body>
+	<div id="map" class="mt-3 mx-5"></div>
+	<div class="bg-info p-3 mx-5 mt-3 text-center text-white"
+		id="header-title">
+		<h2>QUERY DATA</h2>
+	</div>
+	<div id="buttons" class="text-center mb-5">
+		<div class="">
+
+			(Enter latitude / longitude / radiusKm / numberOfStores) <input
+				id="lat1" type="text" value="51.778461" /> <input id="long1"
+				type="text" value="4.615551" /><input id="radius" type="text"
+				value="10" /> <input id="numOfStore1" type="text" value="5" />
+			<button id="closestStore" class="btn-danger hand m-2 p-2"
+				>Get Stores Locations</button>
+		</div>
+		<div class="">
+			(List Stores per City)
+			<button id="storesPerCity" class="btn-info hand m-2 p-2"
+				>Get Stores Per City</button>
+		</div>
+		<div class="">
+			(Enter SapStoreID) <input id="storeID" type="text" value="3605" />
+			<button id="sapStoreID" class="btn-warning hand m-2 p-2"
+				>Get Store of SapStoreID</button>
+		</div>
+		<div class="">
+			(Enter City Name / numberOfStores) <input id="city" type="text"
+				value="Alkmaar" /> <input id="numOfStore3" type="text" value="5" />
+			<button id="storesOfCity" class="btn-primary hand m-2 p-2"
+				>Get Stores for City</button>
+		</div>
+		<div class="">
+			(Enter latitude / longitude / hours(hh:mm) / numberOfStores) <input
+				id="lat2" type="text" value="51.778461" /> <input id="long2"
+				type="text" value="4.615551" /><input id="hour" type="text"
+				value="12:00" /> <input id="numOfStore2" type="text" value="5" />
+			<button id="closestStoreForHour" class="btn-success hand m-2 p-2"
+				>Get Stores Of Location
+				and Hour</button>
+		</div>
+	</div>
+	<div>
+		<div class="bg-info p-3 mx-5 mt-3 text-center text-white"
+			id="preview-title">
+			<h2>PREVIEW DATA</h2>
+		</div>
+		<div class="text-center">
+			<ul id="city-list" class="text-danger m-2"></ul>
+		</div>
+		<div id="store-container" class="p-5">
+			<table id="store-data"
+				class="table table-sm table-bordered table-striped text-center table-warning">
+				<tr>
+					<th class="text-center" valign="top">STORE NUMBER</th>
+					<th class="text-center" valign="top">UUID</th>
+					<th class="text-center" valign="top">SAP STORE ID</th>
+					<th class="text-center" valign="top">COMPLEX NUMBER</th>
+					<th class="text-center" valign="top">LATITUDE</th>
+					<th class="text-center" valign="top">LONGITUDE</th>
+					<th class="text-center" valign="top">CITY</th>
+					<th class="text-center" valign="top">STREET</th>
+					<th class="text-center" valign="top">STREET NUMBER</th>
+					<th class="text-center" valign="top">OPEN HOURS</th>
+				</tr>
+
+			</table>
+		</div>
+	</div>
+	<script src="http://code.jquery.com/jquery-3.2.1.min.js"></script>
+	<script type="text/javascript">
+	
+		window.addEventListener('load', function(e) {
+			initMap(); // Just used for init of map and google callback
+
+			let googleMapManager = new GoogleMapManager();
+			let remoteDataManager= new RemoteDataManager(googleMapManager);
+			let commandManager = new CommandManager(remoteDataManager);
+		});
+	
+		let map;
+	
+		function initMap() {
+			let center = {
+				lat : 52.190328,
+				lng : 5.966148
+			};
+			map = new google.maps.Map(document.getElementById('map'), {
+				zoom : 10,
+				center : center
+			});
+		}
+
+		class GoogleMapManager{
+			
+			 createMarker(store) {
+				let infowindow = new google.maps.InfoWindow({});
+				let marker;
+		
+				let center = {
+					lat : store.address.geoLocation.latitude,
+					long : store.address.geoLocation.longitude
+				}
+				marker = new google.maps.Marker({
+					icon : 'http://maps.google.com/mapfiles/ms/icons/green-dot.png',
+					position : new google.maps.LatLng(store.address.geoLocation.latitude, store.address.geoLocation.longitude),
+					map : map,
+					center : center,
+					title : store.address.city
+				});
+		
+				map.setCenter(new google.maps.LatLng(store.address.geoLocation.latitude, store.address.geoLocation.longitude));
+		
+				google.maps.event.addListener(marker, 'click', (function(marker) {
+					return function() {
+						var content = store.address.city + " " + store.address.street + " " + store.address.streetNumber + " <br /> Open from: " + store.storeInformation.todayOpen + " - " + store.storestoreInformation.todayClose;
+		
+						infowindow.setContent(content);
+						infowindow.open(map, marker);
+					}
+				})(marker));
+			}
+		}
+		
+		class RemoteDataManager {
+			constructor(googleMapManager){
+				this.googleMapManager = googleMapManager;
+			}
+			
+			getRemoteJsonData(url) {
+	
+				let self = this;
+				$.getJSON(encodeURI(url), function(data) {
+					$("#city-list").empty();
+					$(".appender").empty();
+					$("#preview-title").html("<h2>PREVIEW DATA</h2>");
+	
+					if (data instanceof Array) {
+						$.each(data, function(i, store) {
+							self.buildStoreData(store, i + 1);
+							self.googleMapManager.createMarker(store);
+						});
+					} else {
+						if (data.uuid === undefined) {
+							self.manageCityList(data);
+						} else {
+							self.buildStoreData(data, 1);
+							self.googleMapManager.createMarker(data);
+						}
+					}
+				}).fail(function(jqXHR) {
+					if (jqXHR.status != 200 && jqXHR.responseJSON !== undefined) {
+						$(".appender").empty();
+						let response = jqXHR.responseJSON === undefined ? '' : jqXHR.responseJSON.errorMessage;
+						$("#preview-title").html('<h2 class="text-center text-danger appender">' + response + "</h2>");
+					}
+				});
+			}
+	
+			manageCityList(obj) {
+				$('#city-list').append("<li>NUMBER OF CITIES: " + Object.keys(obj).length + "</li>").append("<li>----------------------</li>");
+				for (const [key, value] of Object.entries(obj)) {
+					$('#city-list').append("<li>City:" + key + " - Number of Stores: " + value + "</li>"); }
+			}
+	
+			buildStoreData(store, i) {
+				$('<tr class="appender">').append(
+					$('<td>').text(i),
+					$('<td>').text(store.uuid),
+					$('<td>').text(store.sapStoreID),
+					$('<td>').text(store.complexNumber),
+					$('<td>').text(store.address.geoLocation.latitude),
+					$('<td>').text(store.address.geoLocation.longitude),
+					$('<td>').text(store.address.city),
+					$('<td>').text(store.address.street),
+					$('<td>').text(store.address.streetNumber),
+					$('<td>').text(store.storeInformation.todayOpen + " - " + store.storeInformation.todayClose)
+				).appendTo('#store-data');
+			}
+		}
+	
+		class CommandManager {
+			constructor(remoteDataManager) {
+				this.remoteDataManager = remoteDataManager;
+				this.initiateCommandListeners();
+			}
+	
+			initiateCommandListeners(){
+				let self = this;
+				$('#closestStore').click(function(){
+					self.getClosestStore();
+				})
+				
+				$('#storesPerCity').click(function(){
+					self.getNumberOfStoresPerCity();
+				})
+				
+				$('#sapStoreID').click(function(){
+					self.getStoreWithSapStoreID();
+				})
+				
+				$('#storesOfCity').click(function(){
+					self.getStoresOfCity();
+				})
+				
+				$('#closestStoreForHour').click(function(){
+					self.getClosestStoreForHour();
+				})
+			}
+			
+			getNumberOfStoresPerCity() {
+				let url = 'http://localhost:6789/store/api/stats/storespercity';
+				this.remoteDataManager.getRemoteJsonData(url);
+			}
+	
+			getStoreWithSapStoreID() {
+				let storeId = $("#storeID").val();
+				if (storeId.length < 1) {
+					alert("StoreID is mandatory parameter");
+					return;
+				}
+				let url = 'http://localhost:6789/store/api/storeid/' + storeId;
+				this.remoteDataManager.getRemoteJsonData(url);
+			}
+	
+			getStoresOfCity() {
+				let city = $("#city").val();
+				if (city.length < 1) {
+					alert("City is mandatory parameter");
+					return;
+				}
+	
+				let numOfStoreTmp = $("#numOfStore3").val();
+				let numberOfStores = (numOfStoreTmp.length >= 1 ? '?numberOfStores=' + numOfStoreTmp : '');
+				let url = 'http://localhost:6789/store/api/cityStoresLocation/' + city + numberOfStores;
+				this.remoteDataManager.getRemoteJsonData(url);
+			}
+	
+			getClosestStoreForHour() {
+				let lat = $("#lat2").val();
+				let long = $("#long2").val();
+				let hour = $("#hour").val();
+	
+				if (lat.length < 1 || long.length < 1 || hour.length < 1) {
+					alert("Latitude/Longitude/Hour are mandatory parameters");
+					return;
+				}
+				let numOfStoreTmp = $("#numOfStore2").val();
+				let numberOfStores = (numOfStoreTmp.length >= 1 ? '?numberOfStores=' + numOfStoreTmp : '');
+	
+				let url = 'http://localhost:6789/store/api/closestsStoreLocation/worktime/' + lat + '/' + long + '/' + hour + numberOfStores;
+				this.remoteDataManager.getRemoteJsonData(url);
+			}
+	
+			getClosestStore() {
+				let lat = $("#lat1").val();
+				let long = $("#long1").val();
+	
+				if (lat.length < 1 || long.length < 1) {
+					alert("Latitude/Longitude are mandatory parameters");
+					return;
+				}
+	
+				let numOfStoreTmp = $("#numOfStore1").val();
+				let numberOfStores = (numOfStoreTmp.length >= 1 ? '&numberOfStores=' + numOfStoreTmp : '');
+	
+				let radius = $("#radius").val();
+				let radiusKm = (radius.length >= 1 ? '?radiusKm=' + radius : '');
+				let url = 'http://localhost:6789/store/api/coordinatesStoresLocation/' + lat + '/' + long + radiusKm + numberOfStores;
+	
+				this.remoteDataManager.getRemoteJsonData(url);
+			}
+		}
+	</script>
+	<script async defer
+		src="http://maps.googleapis.com/maps/api/js?key=AIzaSyB9JmGfsLaZhMnl4HaopfqiqgDCWLhO_BA&callback=initMap">
+		</script>
+</body>
+</html>
+

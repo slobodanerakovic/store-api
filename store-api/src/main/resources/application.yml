@@ -1,0 +1,9 @@
+server:
+    servlet:
+        context-path: /store
+    port: 6789
+    compression:
+        enabled: true
+spring:
+    main:
+        banner-mode: "off"
